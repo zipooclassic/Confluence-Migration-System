@@ -55,12 +55,12 @@ def run_migration_in_background(form_data):
 def create_job():
     """새 마이그레이션 작업을 시작합니다."""
     form_data = request.form.to_dict()
-
+    
     # 백그라운드 스레드에서 마이그레이션 실행
     thread = threading.Thread(target=run_migration_in_background, args=(form_data,))
     thread.daemon = True
     thread.start()
-
+    
     flash('마이그레이션 작업이 백그라운드에서 시작되었습니다. 대시보드에서 진행 상황을 확인하세요.', 'success')
     return redirect(url_for('web.dashboard'))
 
@@ -104,7 +104,7 @@ def retry_job(job_id):
     thread = threading.Thread(target=retry_job_in_background, args=(job_id, form_data))
     thread.daemon = True
     thread.start()
-
+    
     flash(f'Job #{job_id}의 실패한 페이지에 대한 재시도 작업이 시작되었습니다.', 'info')
     return redirect(url_for('web.job_detail', job_id=job_id))
 
@@ -144,9 +144,43 @@ def run_validation():
     thread = threading.Thread(target=run_validation_in_background, args=(form_data,))
     thread.daemon = True
     thread.start()
-
+    
     flash('페이지 트리 검증이 백그라운드에서 시작되었습니다.', 'success')
     return redirect(url_for('web.validation_form'))
+
+def remigrate_in_background(form_data):
+    """백그라운드에서 선택된 페이지의 재이관을 실행하는 함수."""
+    db = get_db_session()
+    try:
+        source_page_ids = form_data.getlist('source_page_ids')
+        validation_job_id = form_data.get('validation_job_id')
+
+        # API 클라이언트 초기화
+        source_api = ConfluenceAPI(form_data['source_url'], form_data['source_username'], form_data['source_api_token'])
+        target_api = ConfluenceAPI(form_data['target_url'], form_data['target_username'], form_data['target_api_token'])
+        
+        validator = PageValidator(source_api, target_api, db)
+        validator.remigrate_selected_pages(validation_job_id, source_page_ids)
+    except Exception as e:
+        print(f"백그라운드 재이관 작업 실패: {e}")
+    finally:
+        db.close()
+
+@web.route('/validation/remigrate', methods=['POST'])
+def remigrate_from_validation():
+    """검증 결과 페이지에서 선택된 누락 페이지들을 재이관합니다."""
+    form_data = request.form
+    if not form_data.getlist('source_page_ids'):
+        flash('재이관할 페이지를 하나 이상 선택해주세요.', 'warning')
+        return redirect(url_for('web.validation_result', validation_job_id=form_data.get('validation_job_id')))
+
+    thread = threading.Thread(target=remigrate_in_background, args=(form_data,))
+    thread.daemon = True
+    thread.start()
+
+    flash(f"선택된 페이지의 재이관 작업이 백그라운드에서 시작되었습니다. 잠시 후 타겟 시스템에서 확인해주세요.", 'success')
+    return redirect(url_for('web.validation_result', validation_job_id=form_data.get('validation_job_id')))
+
 
 @web.route('/validation/<int:validation_job_id>')
 def validation_result(validation_job_id):
@@ -155,4 +189,14 @@ def validation_result(validation_job_id):
     validation_job = db.query(ValidationJob).get(validation_job_id)
     results = db.query(ValidationResult).filter_by(validation_job_id=validation_job_id).all()
     db.close()
-    return render_template('validation_result.html', validation_job=validation_job, results=results)
+    
+    # 재이관 폼에 자격 증명을 전달하기 위해 env 변수 로드
+    env_vars = {
+        "SOURCE_CONFLUENCE_URL": os.getenv("SOURCE_CONFLUENCE_URL"),
+        "SOURCE_CONFLUENCE_USERNAME": os.getenv("SOURCE_CONFLUENCE_USERNAME"),
+        "SOURCE_CONFLUENCE_API_TOKEN": os.getenv("SOURCE_CONFLUENCE_API_TOKEN"),
+        "TARGET_CONFLUENCE_URL": os.getenv("TARGET_CONFLUENCE_URL"),
+        "TARGET_CONFLUENCE_USERNAME": os.getenv("TARGET_CONFLUENCE_USERNAME"),
+        "TARGET_CONFLUENCE_API_TOKEN": os.getenv("TARGET_CONFLUENCE_API_TOKEN"),
+    }
+    return render_template('validation_result.html', validation_job=validation_job, results=results, env=env_vars)

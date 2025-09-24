@@ -88,7 +88,7 @@ class ConfluenceAPI:
         """
         descendants = []
         pages_to_visit = [(root_page_id, 0)] # (page_id, depth)를 가진 스택
-
+        
         while pages_to_visit:
             current_page_id, current_depth = pages_to_visit.pop(0)
 
@@ -157,6 +157,32 @@ class ConfluenceAPI:
             log.error(f"페이지 ID {page_id}의 스페이스 키를 확인할 수 없습니다: {e}")
             raise
 
+    def search_pages_by_title(self, space_key: str, title: str, ancestor_id: str | None = None) -> list:
+        """
+        주어진 제목과 상위 페이지 ID를 기준으로 페이지를 검색합니다.
+
+        :param space_key: 검색할 스페이스 키.
+        :param title: 검색할 페이지의 정확한 제목.
+        :param ancestor_id: 검색 범위를 제한할 상위 페이지 ID (선택 사항).
+        :return: 검색된 페이지 딕셔너리의 리스트.
+        """
+        # 제목에 포함된 따옴표는 CQL에서 문제를 일으키므로 이스케이프 처리합니다.
+        sanitized_title = title.replace('"', '\\"')
+        cql = f'space = "{space_key}" and title = "{sanitized_title}"'
+        if ancestor_id:
+            cql += f' and ancestor = {ancestor_id}'
+        
+        try:
+            results = self.confluence.cql(cql, limit=10) # 중복 제목을 고려하여 limit을 넉넉하게 설정
+            return results.get('results', [])
+        except HTTPError as e:
+            log.error(f"CQL 검색 실패 ('{cql}'): {e.response.text}")
+            raise
+        except Exception as e:
+            log.error(f"CQL 검색 중 예상치 못한 오류 발생 ('{cql}'): {e}")
+            raise
+
+
 # 예제 사용법 (테스트 목적)
 if __name__ == '__main__':
     # 이 블록은 스크립트가 직접 실행될 때만 실행됩니다
@@ -168,14 +194,14 @@ if __name__ == '__main__':
     SOURCE_URL = os.getenv("SOURCE_CONFLUENCE_URL")
     SOURCE_USER = os.getenv("SOURCE_CONFLUENCE_USERNAME")
     SOURCE_TOKEN = os.getenv("SOURCE_CONFLUENCE_API_TOKEN")
-
+    
     if not all([SOURCE_URL, SOURCE_USER, SOURCE_TOKEN]):
         print("이 예제를 실행하려면 .env 파일에 SOURCE Confluence 환경 변수를 설정하세요.")
     else:
         try:
             # 소스 Confluence API 초기화
             source_confluence = ConfluenceAPI(SOURCE_URL, SOURCE_USER, SOURCE_TOKEN)
-
+            
             # --- get_page 테스트 ---
             # 소스 Confluence의 실제 페이지 ID로 교체하세요
             test_page_id = "12345678" # 중요: 이 값을 변경하세요
