@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Validation Result #{{ validation_job.id }} - Confluence Migration System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Validation Result #{{ validation_job.id }}</h2>
+    <a href="{{ url_for('web.validation_form') }}" class="btn btn-secondary">Back to Validation</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Validation Summary
+    </div>
+    <div class="card-body">
+        <p><strong>Source Root Page ID:</strong> {{ validation_job.source_root_page_id }}</p>
+        <p><strong>Target Root Page ID:</strong> {{ validation_job.target_root_page_id }}</p>
+        <p><strong>Status:</strong> <span class="status-badge status-{{ validation_job.status }}">{{ validation_job.status }}</span></p>
+        <p><strong>Total Missing Pages:</strong> <span class="badge bg-danger">{{ validation_job.missing_pages_count }}</span></p>
+        <p><strong>Validation Run At:</strong> {{ validation_job.created_at.strftime('%Y-%m-%d %H:%M:%S') if validation_job.created_at }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Missing Pages
+    </div>
+    <div class="card-body">
+        {% if results %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Source Page ID</th>
+                    <th>Source Page Title</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result.source_page_id }}</td>
+                    <td>{{ result.source_page_title }}</td>
+                    <td><span class="text-danger">{{ result.reason }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-success text-center">🎉 No missing pages found! The trees appear to be identical.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

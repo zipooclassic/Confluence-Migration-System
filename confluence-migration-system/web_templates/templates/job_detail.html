@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Job #{{ job.id }} Details - Confluence Migration System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Job #{{ job.id }} Details</h2>
+    <a href="{{ url_for('web.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Job Summary
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Source Root Page ID:</strong> {{ job.source_root_page_id }}</p>
+                <p><strong>Target Root Page ID:</strong> {{ job.target_root_page_id }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Status:</strong> <span class="status-badge status-{{ job.status }}">{{ job.status }}</span></p>
+                <p><strong>Created At:</strong> {{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at }}</p>
+            </div>
+        </div>
+        <div class="progress" style="height: 25px;">
+            {% set total = job.total_pages if job.total_pages > 0 else 1 %}
+            {% set success_perc = (job.successful_pages / total) * 100 %}
+            {% set failed_perc = (job.failed_pages / total) * 100 %}
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ success_perc }}%" aria-valuenow="{{ job.successful_pages }}" aria-valuemin="0" aria-valuemax="{{ total }}">{{ job.successful_pages }} Succeeded</div>
+            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ failed_perc }}%" aria-valuenow="{{ job.failed_pages }}" aria-valuemin="0" aria-valuemax="{{ total }}">{{ job.failed_pages }} Failed</div>
+        </div>
+    </div>
+    {% if job.failed_pages > 0 %}
+    <div class="card-footer text-end">
+        <form method="POST" action="{{ url_for('web.retry_job', job_id=job.id) }}">
+            <button type="submit" class="btn btn-warning">Retry Failed Pages</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Page-by-Page Status
+    </div>
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Source Page ID</th>
+                    <th>Source Title</th>
+                    <th>Status</th>
+                    <th>Target Page ID</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for page in pages %}
+                <tr class="status-{{ page.status }}">
+                    <td>{{ page.source_page_id }}</td>
+                    <td>{{ page.source_page_title }}</td>
+                    <td><span class="status-badge status-{{ page.status }}">{{ page.status }}</span></td>
+                    <td>{{ page.target_page_id or 'N/A' }}</td>
+                    <td>
+                        {% if page.error_message %}
+                        <small class="text-danger">{{ page.error_message }}</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

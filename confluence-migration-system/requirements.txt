@@ -1,0 +1,5 @@
+Flask
+atlassian-python-api
+SQLAlchemy
+python-dotenv
+gunicorn

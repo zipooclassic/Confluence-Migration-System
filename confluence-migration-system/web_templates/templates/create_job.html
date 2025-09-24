@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}New Migration Job - Confluence Migration System{% endblock %}
+
+{% block content %}
+<h2>Create a New Migration Job</h2>
+<p class="lead">Enter the details for the source and target Confluence instances.</p>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('web.create_job') }}">
+            <h4>Source Confluence</h4>
+            <hr>
+            <div class="mb-3">
+                <label for="source_url" class="form-label">Confluence URL</label>
+                <input type="url" class="form-control" id="source_url" name="source_url" value="{{ env.SOURCE_CONFLUENCE_URL or '' }}" required>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="source_username" class="form-label">Username (Email)</label>
+                    <input type="text" class="form-control" id="source_username" name="source_username" value="{{ env.SOURCE_CONFLUENCE_USERNAME or '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="source_api_token" class="form-label">API Token</label>
+                    <input type="password" class="form-control" id="source_api_token" name="source_api_token" value="{{ env.SOURCE_CONFLUENCE_API_TOKEN or '' }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="source_root_page_id" class="form-label">Source Root Page ID</label>
+                <input type="text" class="form-control" id="source_root_page_id" name="source_root_page_id" required>
+                <div class="form-text">The parent page ID from which to start the migration.</div>
+            </div>
+
+            <h4 class="mt-5">Target Confluence</h4>
+            <hr>
+            <div class="mb-3">
+                <label for="target_url" class="form-label">Confluence URL</label>
+                <input type="url" class="form-control" id="target_url" name="target_url" value="{{ env.TARGET_CONFLUENCE_URL or '' }}" required>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="target_username" class="form-label">Username (Email)</label>
+                    <input type="text" class="form-control" id="target_username" name="target_username" value="{{ env.TARGET_CONFLUENCE_USERNAME or '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="target_api_token" class="form-label">API Token</label>
+                    <input type="password" class="form-control" id="target_api_token" name="target_api_token" value="{{ env.TARGET_CONFLUENCE_API_TOKEN or '' }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="target_root_page_id" class="form-label">Target Parent Page ID</label>
+                <input type="text" class="form-control" id="target_root_page_id" name="target_root_page_id" required>
+                <div class="form-text">The page ID in the target system under which the new pages will be created.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-3">Start Migration</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
