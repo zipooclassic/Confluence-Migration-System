@@ -24,8 +24,7 @@ class ConfluenceAPI:
             self.confluence = Confluence(
                 url=url,
                 username=username,
-                password=api_token,
-                cloud=True  # Confluence Cloud를 가정
+                token=api_token
             )
             # 기본 정보를 가져와 연결 확인
             self.confluence.get_all_spaces(limit=1)
