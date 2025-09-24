@@ -1,54 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}Validation Result #{{ validation_job.id }} - Confluence Migration System{% endblock %}
+{% block title %}검증 결과 #{{ validation_job.id }} - Confluence Migration System{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Validation Result #{{ validation_job.id }}</h2>
-    <a href="{{ url_for('web.validation_form') }}" class="btn btn-secondary">Back to Validation</a>
+    <h2>검증 결과 #{{ validation_job.id }}</h2>
+    <a href="{{ url_for('web.validation_form') }}" class="btn btn-secondary">검증 페이지로 돌아가기</a>
 </div>
 
 <div class="card mb-4">
     <div class="card-header">
-        Validation Summary
+        검증 요약
     </div>
     <div class="card-body">
-        <p><strong>Source Root Page ID:</strong> {{ validation_job.source_root_page_id }}</p>
-        <p><strong>Target Root Page ID:</strong> {{ validation_job.target_root_page_id }}</p>
-        <p><strong>Status:</strong> <span class="status-badge status-{{ validation_job.status }}">{{ validation_job.status }}</span></p>
-        <p><strong>Total Missing Pages:</strong> <span class="badge bg-danger">{{ validation_job.missing_pages_count }}</span></p>
-        <p><strong>Validation Run At:</strong> {{ validation_job.created_at.strftime('%Y-%m-%d %H:%M:%S') if validation_job.created_at }}</p>
+        <p><strong>소스 루트 페이지 ID:</strong> {{ validation_job.source_root_page_id }}</p>
+        <p><strong>타겟 루트 페이지 ID:</strong> {{ validation_job.target_root_page_id }}</p>
+        <p><strong>상태:</strong> <span class="status-badge status-{{ validation_job.status }}">{{ validation_job.status }}</span></p>
+        <p><strong>총 누락 페이지:</strong> <span class="badge bg-danger">{{ validation_job.missing_pages_count }}</span></p>
+        <p><strong>검증 실행 시간:</strong> {{ validation_job.created_at.strftime('%Y-%m-%d %H:%M:%S') if validation_job.created_at }}</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        Missing Pages
-    </div>
-    <div class="card-body">
-        {% if results %}
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Source Page ID</th>
-                    <th>Source Page Title</th>
-                    <th>Reason</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for result in results %}
-                <tr>
-                    <td>{{ result.source_page_id }}</td>
-                    <td>{{ result.source_page_title }}</td>
-                    <td><span class="text-danger">{{ result.reason }}</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="text-success text-center">🎉 No missing pages found! The trees appear to be identical.</p>
-        {% endif %}
-    </div>
-</div>
+<form method="POST" action="{{ url_for('web.remigrate_from_validation') }}">
+    <input type="hidden" name="validation_job_id" value="{{ validation_job.id }}">
+    
+    {# This part is not ideal, but necessary for this stateless approach #}
+    {# In a real app, creds might be stored encrypted or handled differently #}
+    <input type="hidden" name="source_url" value="{{ env.SOURCE_CONFLUENCE_URL or '' }}">
+    <input type="hidden" name="source_username" value="{{ env.SOURCE_CONFLUENCE_USERNAME or '' }}">
+    <input type="hidden" name="source_api_token" value="{{ env.SOURCE_CONFLUENCE_API_TOKEN or '' }}">
+    <input type="hidden" name="target_url" value="{{ env.TARGET_CONFLUENCE_URL or '' }}">
+    <input type="hidden" name="target_username" value="{{ env.TARGET_CONFLUENCE_USERNAME or '' }}">
+    <input type="hidden" name="target_api_token" value="{{ env.TARGET_CONFLUENCE_API_TOKEN or '' }}">
 
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            누락된 페이지 목록
+            {% if results %}
+            <button type="submit" class="btn btn-primary">선택 페이지 이관 처리</button>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if results %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;"><input class="form-check-input" type="checkbox" id="select-all"></th>
+                        <th>소스 페이지 ID</th>
+                        <th>소스 페이지 제목</th>
+                        <th>누락 사유</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td><input class="form-check-input page-checkbox" type="checkbox" name="source_page_ids" value="{{ result.source_page_id }}"></td>
+                        <td>{{ result.source_page_id }}</td>
+                        <td>{{ result.source_page_title }}</td>
+                        <td><span class="text-danger">{{ result.reason }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-success text-center">🎉 누락된 페이지를 찾지 못했습니다! 페이지 트리가 일치하는 것으로 보입니다.</p>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<script>
+document.getElementById('select-all').addEventListener('change', function(event) {
+    var checkboxes = document.querySelectorAll('.page-checkbox');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = event.target.checked;
+    });
+});
+</script>
 {% endblock %}
